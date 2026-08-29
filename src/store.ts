@@ -2,7 +2,7 @@ import { seedGrievances } from './data'
 import type { Grievance } from './types'
 const key='sahaay-grievances'
 const versionKey='sahaay-data-version'
-const version='v9'
+const version='v10-clean-slate'
 export const getGrievances=():Grievance[]=>{
   const existing=localStorage.getItem(key)
   if(localStorage.getItem(versionKey)!==version){

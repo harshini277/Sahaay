@@ -21,9 +21,4 @@ const base=(daysAgo:number) => {
  ]
 }
 
-export const seedGrievances: Grievance[] = [
- {id:'PG-2026-09001-001',citizenId:'demo',title:'Pension payment delay',category:'Pension grievance',issue:'Delayed / missing pension payment',authority:'Pension Disbursing Authority',status:'under_review',expected:'15 Sep 2026',events:base(1)},
- {id:'PG-2026-08425-017',citizenId:'anita',title:'Pension payment delay',category:'Pension grievance',issue:'Delayed / missing pension payment',authority:'Pension Disbursing Authority',status:'under_review',expected:'15 Sep 2026',events:[...base(4),{title:'Response expected',date:'15 Sep 2026',detail:'The department is expected to send a response by this date.',action:'Nothing needed unless the date passes.',state:'upcoming' as const},{title:'Resolution',date:'Waiting',detail:'A department response will appear here.',action:'You can give feedback when a response arrives.',state:'upcoming' as const}]},
- {id:'PG-2026-08421-044',citizenId:'ravi',title:'Application pending',category:'Service delivery grievance',issue:'Delayed service',authority:'District Service Centre',status:'action_required',expected:'08 Sep 2026',events:[...base(2),{title:'Information needed',date:fmt(at(1)),detail:'The department needs one additional document to continue reviewing your grievance.',action:'Provide your application acknowledgement or a supporting record.',state:'attention' as const},{title:'Response expected',date:'By 08 Sep 2026',detail:'Review resumes after you provide information.',action:'Action required from you first.',state:'upcoming' as const}]},
- {id:'PG-2026-07211-309',citizenId:'meena',title:'Previous resolution did not solve issue',category:'Existing grievance',issue:'Unsatisfactory resolution',authority:'State Service Department',status:'resolved',expected:'Resolved',events:[...base(8),{title:'Resolution received',date:fmt(at(2)),detail:'The department marked this grievance resolved. You told us the problem remains.',action:'You may ask for the resolution to be reviewed.',state:'current' as const}]}
-]
+export const seedGrievances: Grievance[] = []

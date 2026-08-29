@@ -151,18 +151,3 @@ The guidance layer could use an approved AI model, rules engine, or combination 
 Government processes should not require citizens to become experts in government processes.
 
 **Sahaay lets citizens start with the one thing they already know: what happened to them.**
-
-
-## Local AI layer
-
-Sahaay now includes an optional in-browser interpretation layer using WebLLM. On compatible browsers, a small Llama 3.2 1B instruction model is loaded locally through WebGPU and used to identify the citizen's intent, likely service and any location already provided.
-
-The model does **not** decide government authority contacts or invent routing information. Its output is converted into structured hints and then passed through Sahaay's deterministic grievance and authority data. If WebGPU/model loading is unavailable, the existing rules-based interpreter remains the fallback so the MVP still works.
-
-The first AI-assisted interaction can take longer because the browser may need to download and cache the model. This is an MVP trade-off; a production deployment could use an approved government-hosted model/service or another secure inference layer instead.
-
-### On-device AI (no API key required)
-
-The conversational guidance uses a browser-local LLM through WebLLM/WebGPU. No OpenAI API key or Vercel server function is required for the demonstration. The model is downloaded to the citizen's browser and inference happens on the device when WebGPU is available. On devices where local inference cannot run, Sahaay falls back to its deterministic guidance flow.
-
-The first local-model load can take time and uses significant browser storage. This is a deliberate MVP trade-off to avoid sending citizen text to a third-party API.

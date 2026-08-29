@@ -32,45 +32,25 @@ function ConversationJourney(){
   const [draft,setDraft]=useState('');
   const [conversation,setConversation]=useState<Conversation|null>(null);
   const [busy,setBusy]=useState(false);
-  const aiRequest=useRef(0);
   const {c}=useCitizen();
-  const [aiStatus,setAiStatus]=useState<'preparing'|'ready'|'unavailable'>('preparing');
-  const [pendingUser,setPendingUser]=useState('');
-
-  useEffect(()=>{
-    if(!c) return;
-    let alive=true;
-    api.chat.warmup((message)=>{ if(alive) setAiStatus('preparing'); }).then(ok=>{
-      if(alive) setAiStatus(ok?'ready':'unavailable');
-    });
-    return ()=>{alive=false};
-  },[c]);
 
   const send=async(text=draft)=>{
     const clean=text.trim();
     if(!clean||busy)return;
-    const requestId=++aiRequest.current;
     setBusy(true);
     setDraft('');
-    setPendingUser(clean);
     try{
-      // Prefer the on-device model whenever it is ready. The deterministic
-      // workflow is only a fallback, so the model can actually understand
-      // ordinary requests instead of forcing the citizen through categories.
-      const local = aiStatus === 'ready'
-        ? (conversation ? await api.chat.enhanceReply(conversation,clean) : await api.chat.enhanceStart(clean))
-        : null;
-      const base = local || (conversation ? await api.chat.reply(conversation,clean) : await api.chat.start(clean));
+      // This MVP uses a deterministic conversation engine rather than a
+      // remote or browser-loaded LLM. That keeps the demo reliable offline
+      // and makes every required workflow step predictable.
+      const base = conversation ? await api.chat.reply(conversation,clean) : await api.chat.start(clean);
       if ((base.intent==='view_grievances' || base.intent==='track_grievance') && !conversation) {
         sessionStorage.removeItem('sahaay-description');
         nav('/track');
         return;
       }
-      if (requestId===aiRequest.current) {
-        setConversation(base);
-        setPendingUser('');
-      }
-    } finally { setBusy(false); if (requestId===aiRequest.current) setPendingUser(''); }
+      setConversation(base);
+    } finally { setBusy(false); }
   };
 
   const choose=(x:string)=>send(x);
@@ -119,10 +99,9 @@ function ConversationJourney(){
       <section className="conversation-area">
         <div className="conversation-head">
           <div>
-            <p className="eyebrow">Lodge a grievance</p>
+            <p className="eyebrow">Lodge grievance</p>
             <h1>Sahaay</h1>
             <p>Explain what went wrong in your own words. Sahaay will work out the route.</p>
-            <div className="ai-status" aria-live="polite">{aiStatus==='ready'?'Sahaay AI ready':aiStatus==='preparing'?'Sahaay AI is preparing on this device…':'Sahaay is using its guided fallback on this device.'}</div>
           </div>
         </div>
 
@@ -142,8 +121,6 @@ function ConversationJourney(){
             </div>}
           </div>)}
 
-          {pendingUser&&<div className="message user pending-user"><b>You</b><p>{pendingUser}</p></div>}
-          {busy&&<div className="message assistant typing-message"><b>Sahaay</b><p><span className="typing-dot"/> <span className="typing-dot"/> <span className="typing-dot"/> <span className="typing-label">Sahaay is responding…</span></p></div>}
         </div>
 
         {complete&&<div className="path-ready">

@@ -1,7 +1,6 @@
 import {citizens} from './data'
 import {addGrievance,getGrievance,updateGrievance} from './store'
-import {reply,startConversation,startConversationWithLLM,continueConversationWithLLM} from './conversation'
-import {chatWithLocalLLM,interpretWithLocalLLM,warmupLocalLLM} from './llm'
+import {reply,startConversation} from './conversation'
 import type {Conversation} from './conversation'
 import type {Citizen,Grievance} from './types'
 
@@ -12,25 +11,8 @@ const later = <T,>(value:T) => new Promise<T>(resolve => setTimeout(() => resolv
 const persist = (next:Grievance) => { updateGrievance(next); return later(next) }
 export const api = {
   chat: {
-    // The deterministic path is immediate so a citizen is never blocked by
-    // first-time WebGPU/model loading. The LLM enhancement runs separately.
     start: async (text:string) => later(startConversation(text)),
     reply: async (c:Conversation,text:string) => later(reply(c,text)),
-    enhanceStart: async (text:string) => {
-      const ai = await interpretWithLocalLLM(text)
-      if (!ai.reply && !ai.issue && !ai.service) return null
-      return startConversationWithLLM(text, ai)
-    },
-    warmup: warmupLocalLLM,
-    enhanceReply: async (c:Conversation,text:string) => {
-      const history = c.messages
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .map(m => ({role:m.role as 'user'|'assistant', content:m.text}))
-      history.push({role:'user',content:text})
-      const ai = await chatWithLocalLLM(history)
-      if (!ai.reply && !ai.issue && !ai.service) return null
-      return continueConversationWithLLM(c,text,ai)
-    }
   },
   auth: {
     register:(input:{name:string;email:string;phone:string}) => { const id=`citizen-${Date.now()}`; const citizen:Citizen={id,name:input.name,email:input.email,phone:input.phone,address:'',greeting:'Welcome'}; citizens.push(citizen); return later(citizen) },

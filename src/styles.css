@@ -1182,3 +1182,18 @@ footer::before{content:"";position:absolute;width:360px;height:360px;right:-150p
 .tracker .timeline .event button:hover > span:last-child{
   color:inherit !important;
 }
+
+/* Mobile chat response visibility */
+@media(max-width:620px){
+  .conversation-area .messages{
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    scroll-behavior:auto;
+    padding-bottom:110px;
+  }
+  .conversation-area .message.assistant{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+}

@@ -32,6 +32,7 @@ function ConversationJourney(){
   const [draft,setDraft]=useState('');
   const [conversation,setConversation]=useState<Conversation|null>(null);
   const [busy,setBusy]=useState(false);
+  const messagesRef=useRef<HTMLDivElement|null>(null);
   const {c}=useCitizen();
 
   const send=async(text=draft)=>{
@@ -73,6 +74,14 @@ function ConversationJourney(){
     }
   },[]);
 
+  useEffect(()=>{
+    if(!conversation)return;
+    requestAnimationFrame(()=>{
+      const el=messagesRef.current;
+      if(el) el.scrollTop=el.scrollHeight;
+    });
+  },[conversation]);
+
   if(!c)return <><Header/><main id="main-content" className="auth journey-gate"><p className="eyebrow">Secure grievance guidance</p><h1>Sign in before you start a grievance</h1><p>Your grievance conversation is private. Sign in first so the information you provide stays linked to your citizen account.</p><SignInModal onSuccess={()=>window.location.reload()}/></main></>;
   if(out)return <><Header/><main id="main-content" className="guard"><p className="eyebrow">A different public service</p><h1>This request follows a different route.</h1><p>{conversation?.messages.at(-1)?.text}</p><div className="route-help"><h2>Want to try a grievance instead?</h2><p>Tell Sahaay what happened and we'll help you find the closest public-service route.</p><button onClick={()=>{sessionStorage.removeItem('sahaay-description');setConversation(null);setDraft('');nav('/start',{replace:true})}}>Describe another problem →</button></div></main></>;
 
@@ -105,7 +114,7 @@ function ConversationJourney(){
           </div>
         </div>
 
-        <div className="messages" aria-live="polite">
+        <div ref={messagesRef} className="messages" aria-live="polite">
           {!conversation&&<div className="empty-chat">
             <div className="empty-chat-icon" aria-hidden="true">✦</div>
             <h2>Start with the problem</h2>

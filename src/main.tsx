@@ -233,7 +233,7 @@ function Header({citizen}:{citizen?:string}){
             ? <><Link className="register-link" to="/register" onClick={()=>setOpen(false)}>Register</Link><Link className="signin-link" to="/login" onClick={()=>setOpen(false)}>Sign in</Link></>
             : <>
               <Link className="profile-link" to="/profile" onClick={()=>setOpen(false)} aria-label={`Open ${displayName}'s profile`}><span className="profile-avatar">{displayName.charAt(0).toUpperCase()}</span><span>{displayName}</span></Link>
-              <button className="signout-icon" type="button" aria-label="Sign out" title="Sign out" onClick={()=>setConfirmSignOut(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10M14 8l4 4-4 4M9 12h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+              <button className="signout-icon" type="button" aria-label="Sign out" title="Sign out" onClick={()=>setConfirmSignOut(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10M14 8l4 4-4 4M9 12h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg><span className="signout-label">Sign out</span></button>
             </>}
         </div>
       </nav>

@@ -1,6 +1,6 @@
 export type Category = 'pension' | 'service_delay' | 'complaint_lifecycle' | 'unknown_department' | 'out_of_scope' | 'fallback'
 export type Subtype = 'payment_delay' | 'amount_issue' | 'not_started' | 'application_pending' | 'certificate_pending' | 'licence_service' | 'registration_service' | 'tax_service' | 'no_response' | 'unsatisfactory_resolution' | 'clarification_required' | 'department_unknown' | 'rti' | 'emergency' | 'non_government' | 'general_service'
-export type Intent = 'pension_payment_delay' | 'delayed_service' | 'unsatisfactory_resolution' | 'unknown_department' | 'out_of_scope_rti' | 'out_of_scope_emergency' | 'unknown'
+export type Intent = 'pension_payment_delay' | 'delayed_service' | 'unsatisfactory_resolution' | 'unknown_department' | 'out_of_scope_rti' | 'out_of_scope_emergency' | 'view_grievances' | 'track_grievance' | 'appeal' | 'escalate' | 'general_guidance' | 'unknown'
 export type ConversationState = 'initial' | 'understanding' | 'clarification' | 'identified' | 'preparation' | 'review'
 export type ExpectedAnswer = 'pension_occurrence' | 'pension_expected' | 'service_duration' | 'service_location' | 'complaint_outcome' | 'fallback_category' | 'none'
 export type ChatMessage = { role: 'user' | 'assistant' | 'system'; text: string; options?: string[]; why?: string }
@@ -116,7 +116,7 @@ export function understand(text: string, previous: Entities = {}): Understanding
     health: /\b(public hospital|government hospital|health centre|health center|government health|health scheme)\b/.test(source),
     housing: /\b(housing scheme|housing board|land record|property record|property registration|plot allotment|housing service)\b/.test(source),
     welfare: /\b(welfare scheme|benefit scheme|government benefit|ration card|social security benefit)\b/.test(source),
-    roads: /\b(roadwork|road works|roads?|pothole|footpath|street repair|drainage|road repair)\b/.test(source),
+    roads: /\b(roadwork|road works|roads?|pothole|manhole|footpath|street repair|drainage|road repair|road damage)\b/.test(source),
     sanitation: /\b(garbage|waste collection|sewage|drain|sanitation)\b/.test(source),
     complaint: /\b(complaint|grievance)\b/.test(source),
     department: /\b(department|dept|who to contact|which department|who handles|where to complain|authority)\b/.test(source),
@@ -255,7 +255,7 @@ function nextQuestion(u: Understanding, entities: Entities): { message: ChatMess
     message:{role:'assistant', text:`This sounds like a ${serviceName(u).toLowerCase()} issue. Where is the problem located? You can enter a locality, city or PIN code.`, why:'The location helps identify the local authority responsible for the service.'}, expected:'service_location'
   }
   if (u.category === 'service_delay' && !entities.duration) return {
-    message:{role:'assistant', text:`Understood. It sounds like your ${serviceName(u)} has been delayed. Roughly how long has it been pending? You can answer naturally.`, why:'This helps establish whether the service has been delayed.'}, expected:'service_duration'
+    message:{role:'assistant', text:`Understood. It sounds like your ${serviceName(u)} has been delayed. Roughly how long has it been pending?`, why:'This helps establish whether the service has been delayed.'}, expected:'service_duration'
   }
   if (u.category === 'complaint_lifecycle' && u.subtype === 'unsatisfactory_resolution' && !entities.complaintOutcome) return {
     message:{role:'assistant', text:'I understand. Was the complaint closed without addressing the original problem, or did a response arrive but the issue continued?', options:['Closed without addressing it','A response came, but the issue continued'], why:'This helps prepare the right feedback or appeal path.'}, expected:'complaint_outcome'
@@ -283,10 +283,117 @@ function makeConversation(messages: ChatMessage[], understanding: Understanding,
 }
 
 export function startConversation(text: string): Conversation {
+  const normalized = normalize(text)
+  if (/\b(show|see|view|list|check)\b.*\b(my|existing|previous)\b.*\b(grievance|grievances|complaint|complaints|cases)\b|\bwhere\b.*\b(my|existing)\b.*\b(grievances|complaints|cases)\b/.test(normalized)) {
+    return startConversationWithLLM(text, {intent:'view_grievances',confidence:.95})
+  }
   const understanding = understand(text)
   const messages: ChatMessage[] = [{role:'user',text}]
   if(hasSensitive(text)) messages.push({role:'assistant',text:privacy})
   return makeConversation(messages, understanding, 0, [], text, 'none')
+}
+
+export type LocalInterpretation = { intent: 'create_grievance' | 'view_grievances' | 'track_grievance' | 'appeal' | 'escalate' | 'general_guidance'; service?: string; issue?: string; location?: string; missing?: string[]; confidence?: number; reply?: string }
+
+const llmServiceLabels: Record<string,string> = {
+  roads_public_works:'Roads / public works',
+  water_drainage:'Water supply / drainage',
+  sanitation_waste:'Sanitation / waste service',
+  municipal_civic:'Municipal service',
+  electricity_utility:'Electricity / utility service',
+  driving_licence:'Driving licence renewal',
+  vehicle_registration:'Vehicle registration or permit',
+  pension:'Pension',
+  certificate_document:'Certificate application',
+  tax_property:'Tax / property tax service',
+  housing_land:'Housing / land service',
+  education_scholarship:'Education / scholarship service',
+  health_public_health:'Public health service',
+  welfare_ration:'Benefits / welfare scheme',
+  employment_labour:'Employment / labour service',
+  other:'Other government service'
+}
+
+export function startConversationWithLLM(text: string, ai: LocalInterpretation): Conversation {
+  if (ai.intent === 'view_grievances') {
+    return {intent:'view_grievances',confidence:ai.confidence ?? 0.95,turn:0,answers:[],messages:[{role:'user',text},{role:'assistant',text:ai.reply || 'Absolutely — I can take you to your existing grievances.'}],entities:{},complete:true,state:'identified',understanding:{confidence:'high',score:10,entities:{}},originalDescription:text,lastQuestion:'none'}
+  }
+  if (ai.intent === 'track_grievance') {
+    return {intent:'track_grievance',confidence:ai.confidence ?? 0.95,turn:0,answers:[],messages:[{role:'user',text},{role:'assistant',text:ai.reply || 'Sure — I can take you to your grievance timeline.'}],entities:{},complete:true,state:'identified',understanding:{confidence:'high',score:10,entities:{}},originalDescription:text,lastQuestion:'none'}
+  }
+  if (ai.intent === 'appeal' || ai.intent === 'escalate') {
+    return {intent:ai.intent,confidence:ai.confidence ?? 0.9,turn:0,answers:[],messages:[{role:'user',text},{role:'assistant',text:ai.reply || 'I can help with that. Open the relevant grievance to continue.'}],entities:{},complete:true,state:'identified',understanding:{confidence:'high',score:9,entities:{}},originalDescription:text,lastQuestion:'none'}
+  }
+
+  const serviceLabel = ai.service ? llmServiceLabels[ai.service] : ''
+  const augmented = [text, serviceLabel, ai.issue].filter(Boolean).join(' — ')
+  const understanding = understand(augmented)
+  if (serviceLabel) understanding.entities.service = serviceLabel
+  if (ai.location) understanding.entities.location = ai.location
+  if (ai.service === 'pension') understanding.category = 'pension'
+  if (ai.service && ai.service !== 'pension' && understanding.category === undefined) {
+    understanding.category = 'service_delay'
+    understanding.subtype = 'general_service'
+    understanding.confidence = 'high'
+    understanding.score = 9
+  }
+
+  // The model's missing fields are allowed to make the conversation more natural,
+  // while the application's verified workflow still decides what can be submitted.
+  if (ai.missing?.some(x => /location|locality|city|area|pin/i.test(x)) && !understanding.entities.location) {
+    understanding.entities.location = undefined
+  }
+  const messages: ChatMessage[] = [{role:'user',text}]
+  if(hasSensitive(text)) messages.push({role:'assistant',text:privacy})
+
+  const required = nextQuestion(understanding, understanding.entities)
+  const modelAskedSomething = /\?/.test(ai.reply || '')
+  if (required) {
+    // The application owns the required workflow question; the model can make
+    // the wording warmer, but it cannot skip a required field.
+    const textReply = ai.reply && modelAskedSomething ? ai.reply : `${ai.reply ? ai.reply + ' ' : ''}${required.message.text}`
+    messages.push({...required.message, text:textReply})
+  } else if (ai.reply) messages.push({role:'assistant',text:ai.reply})
+  else messages.push({role:'assistant',text:`Got it. ${friendlyCategory(understanding)} is the likely route. I can help you review the details next.`})
+
+  const needsLocation = !!required && required.expected === 'service_location'
+  const needsMore = !!required
+  const complete = !!understanding.category && understanding.confidence !== 'low' && !needsMore && understanding.category !== 'unknown_department'
+  return {intent:ai.intent === 'create_grievance' ? intentFrom(understanding) : (ai.intent || intentFrom(understanding)),confidence:ai.confidence ?? Math.min(1,understanding.score/10),turn:0,answers:[],messages,entities:understanding.entities,complete,state:complete?'identified':'clarification',understanding,originalDescription:text,lastQuestion:required?.expected || 'none'}
+}
+
+export function continueConversationWithLLM(c: Conversation, text: string, ai: LocalInterpretation): Conversation {
+  if (ai.intent === 'view_grievances' || ai.intent === 'track_grievance' || ai.intent === 'appeal' || ai.intent === 'escalate') {
+    const textByIntent = ai.reply || (ai.intent === 'view_grievances' ? 'Absolutely — I can take you to your existing grievances.' : ai.intent === 'track_grievance' ? 'Sure — I can take you to your grievance timeline.' : 'I can help with that. Open the relevant grievance to continue.')
+    return {...c, intent:ai.intent, confidence:ai.confidence ?? .9, turn:c.turn+1, answers:[...c.answers,text], messages:[...c.messages,{role:'user',text},{role:'assistant',text:textByIntent}], complete:true, state:'identified', lastQuestion:'none'}
+  }
+
+  const serviceLabel = ai.service ? llmServiceLabels[ai.service] : c.entities.service
+  const combined = [c.originalDescription, text, ai.issue].filter(Boolean).join(' — ')
+  const understanding = understand(combined, {...c.entities, ...(serviceLabel ? {service:serviceLabel} : {}), ...(ai.location ? {location:ai.location} : {})})
+  if (serviceLabel) understanding.entities.service = serviceLabel
+  if (ai.location) understanding.entities.location = ai.location
+  if (c.understanding.category === 'complaint_lifecycle') {
+    understanding.category = c.understanding.category
+    understanding.subtype = c.understanding.subtype
+  }
+  if (!understanding.category && c.understanding.category) understanding.category = c.understanding.category
+  if (!understanding.subtype && c.understanding.subtype) understanding.subtype = c.understanding.subtype
+  if (serviceLabel && understanding.category === undefined) {
+    understanding.category = 'service_delay'; understanding.subtype='general_service'; understanding.confidence='high'; understanding.score=9
+  }
+
+  const messages = [...c.messages, {role:'user' as const,text}]
+  if (hasSensitive(text)) messages.push({role:'assistant',text:privacy})
+
+  const q = nextQuestion(understanding,understanding.entities)
+  if (q) {
+    const textReply = ai.reply && /\?/.test(ai.reply) ? ai.reply : `${ai.reply ? ai.reply + ' ' : ''}${q.message.text}`
+    messages.push({...q.message,text:textReply})
+  } else messages.push({role:'assistant',text:ai.reply || `Thanks — I have enough to understand this. ${friendlyCategory(understanding)} is the likely route, and we can review the details before anything is submitted.`})
+
+  const complete = !!understanding.category && understanding.confidence !== 'low' && !q && understanding.category !== 'unknown_department'
+  return {...c,intent:ai.intent === 'general_guidance' || ai.intent === 'create_grievance' ? intentFrom(understanding) : ai.intent,confidence:ai.confidence ?? Math.min(1,understanding.score/10),turn:c.turn+1,answers:[...c.answers,text],messages,entities:understanding.entities,complete,state:complete?'identified':'clarification',understanding,originalDescription:c.originalDescription,lastQuestion:q?.expected || 'none'}
 }
 
 function contextualReply(c: Conversation, text: string): ChatMessage | undefined {
@@ -367,7 +474,7 @@ function departmentAnswer(c: Conversation, text: string): Conversation | undefin
     messages:[
       ...c.messages,
       {role:'user',text},
-      {role:'assistant',text:`Got it — I'll use ${knownService.toLowerCase()} as the service area. What happened with the service? You can describe the problem in your own words.`}
+      {role:'assistant',text:`Got it — I'll use ${knownService.toLowerCase()} as the service area. What happened with the service? Tell me what happened in your own words.`}
     ]
   }
 }

@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react'
+import React, {useEffect, useMemo, useRef, useState} from 'react'
 import {createRoot} from 'react-dom/client'
 import {BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams} from 'react-router-dom'
 import {citizens} from './data'
@@ -32,17 +32,45 @@ function ConversationJourney(){
   const [draft,setDraft]=useState('');
   const [conversation,setConversation]=useState<Conversation|null>(null);
   const [busy,setBusy]=useState(false);
+  const aiRequest=useRef(0);
   const {c}=useCitizen();
+  const [aiStatus,setAiStatus]=useState<'preparing'|'ready'|'unavailable'>('preparing');
+  const [pendingUser,setPendingUser]=useState('');
+
+  useEffect(()=>{
+    if(!c) return;
+    let alive=true;
+    api.chat.warmup((message)=>{ if(alive) setAiStatus('preparing'); }).then(ok=>{
+      if(alive) setAiStatus(ok?'ready':'unavailable');
+    });
+    return ()=>{alive=false};
+  },[c]);
 
   const send=async(text=draft)=>{
     const clean=text.trim();
     if(!clean||busy)return;
+    const requestId=++aiRequest.current;
     setBusy(true);
+    setDraft('');
+    setPendingUser(clean);
     try{
-      const next=conversation?await api.chat.reply(conversation,clean):await api.chat.start(clean);
-      setConversation(next);
-      setDraft('');
-    } finally { setBusy(false); }
+      // Prefer the on-device model whenever it is ready. The deterministic
+      // workflow is only a fallback, so the model can actually understand
+      // ordinary requests instead of forcing the citizen through categories.
+      const local = aiStatus === 'ready'
+        ? (conversation ? await api.chat.enhanceReply(conversation,clean) : await api.chat.enhanceStart(clean))
+        : null;
+      const base = local || (conversation ? await api.chat.reply(conversation,clean) : await api.chat.start(clean));
+      if ((base.intent==='view_grievances' || base.intent==='track_grievance') && !conversation) {
+        sessionStorage.removeItem('sahaay-description');
+        nav('/track');
+        return;
+      }
+      if (requestId===aiRequest.current) {
+        setConversation(base);
+        setPendingUser('');
+      }
+    } finally { setBusy(false); if (requestId===aiRequest.current) setPendingUser(''); }
   };
 
   const choose=(x:string)=>send(x);
@@ -92,8 +120,9 @@ function ConversationJourney(){
         <div className="conversation-head">
           <div>
             <p className="eyebrow">Lodge a grievance</p>
-            <h1>Sahaay guidance</h1>
-            <p>Explain what went wrong. You can answer naturally — no government terminology needed.</p>
+            <h1>Sahaay</h1>
+            <p>Explain what went wrong in your own words. Sahaay will work out the route.</p>
+            <div className="ai-status" aria-live="polite">{aiStatus==='ready'?'Sahaay AI ready':aiStatus==='preparing'?'Sahaay AI is preparing on this device…':'Sahaay is using its guided fallback on this device.'}</div>
           </div>
         </div>
 
@@ -113,7 +142,8 @@ function ConversationJourney(){
             </div>}
           </div>)}
 
-          {busy&&<div className="message assistant typing-message"><b>Sahaay</b><p><span className="typing-dot"/> <span className="typing-dot"/> <span className="typing-dot"/> <span className="typing-label">Thinking through what you told me…</span></p></div>}
+          {pendingUser&&<div className="message user pending-user"><b>You</b><p>{pendingUser}</p></div>}
+          {busy&&<div className="message assistant typing-message"><b>Sahaay</b><p><span className="typing-dot"/> <span className="typing-dot"/> <span className="typing-dot"/> <span className="typing-label">Sahaay is responding…</span></p></div>}
         </div>
 
         {complete&&<div className="path-ready">
@@ -145,7 +175,7 @@ function ConversationJourney(){
         <h2>Guidance, not bureaucracy.</h2>
         <p>Tell us what happened in ordinary language. You don't need to know which department, category or process applies.</p>
         <div className="privacy"><b>Privacy first</b><br/>Sahaay only needs the information required to understand your problem. Never share Aadhaar, OTPs, passwords or bank details here.</div>
-        <div className="guide-tip"><b>You can type your answer.</b><p>Buttons are shortcuts, not required choices. If none fit, just write what happened.</p></div>
+        <div className="guide-tip"><b>Buttons are shortcuts</b><p>If none fit, just write what happened.</p></div>
       </aside>
     </main>
   </>
@@ -178,41 +208,52 @@ function SignInModal({onSuccess,onClose}:{onSuccess:()=>void;onClose?:()=>void})
   </div>
 }
 function Header({citizen}:{citizen?:string}){
-  const {c}=useCitizen();
+  const {c,logout}=useCitizen();
   const [open,setOpen]=useState(false);
   const [access,setAccess]=useState(false);
+  const [confirmSignOut,setConfirmSignOut]=useState(false);
   const [font,setFont]=useState(()=>localStorage.getItem('sahaay-font-size')||'100');
   useEffect(()=>{document.documentElement.style.fontSize=`${font}%`;localStorage.setItem('sahaay-font-size',font)},[font]);
   const signedIn=Boolean(c||citizen);
   const displayName=(c?.name||citizen||'').trim().split(/\s+/)[0] || 'Account';
   const setFontSize=(v:number)=>setFont(String(Math.max(90,Math.min(115,v))));
+  const signOut=()=>{logout();setConfirmSignOut(false);setOpen(false);window.location.href='/'};
   return <>
     <div className="utility-bar">
       <div className="utility-inner">
-        <span>Sahaay · Citizen grievance assistance</span>
+        <span>Sahaay · Public grievance guidance</span>
         <div className="utility-actions">
-          <a href="#main-content">Skip to main content</a>
+          <Link to="/help">Help & FAQs</Link>
           <button type="button" onClick={()=>setAccess(v=>!v)} aria-expanded={access}>Accessibility</button>
         </div>
       </div>
     </div>
+    <a className="skip-link" href="#main-content">Skip to main content</a>
     {access&&<div className="access-panel" role="region" aria-label="Accessibility options"><b>Text size</b><button onClick={()=>setFontSize(Number(font)-5)} aria-label="Decrease text size">A−</button><button onClick={()=>setFontSize(100)} aria-label="Reset text size">A</button><button onClick={()=>setFontSize(Number(font)+5)} aria-label="Increase text size">A+</button></div>}
     <header className="portal-header">
-      <Link className="service-lockup" to="/"><span className="sahaay-mark" aria-hidden="true">S</span><span><b>Sahaay</b><small>Citizen-first guidance</small></span></Link>
+      <Link className="service-lockup" to="/" aria-label="Sahaay home">
+        <span className="sahaay-mark" aria-hidden="true"><img src="/sahaay-logo.png" alt="" /></span>
+        <span><b>Sahaay</b><small>Know what to do next.</small></span>
+      </Link>
       <button className="menu-button" aria-expanded={open} aria-controls="portal-nav" onClick={()=>setOpen(!open)}><span className="menu-icon" aria-hidden="true">☰</span> Menu</button>
       <nav id="portal-nav" className={open?'open':''}>
-        <Link to="/" onClick={()=>setOpen(false)}>Home</Link>
-        <Link to="/start" onClick={()=>setOpen(false)}>Lodge a grievance</Link>
-        <Link to="/track" onClick={()=>setOpen(false)}>Track grievances</Link>
-        <Link to="/how-it-works" onClick={()=>setOpen(false)}>How it works</Link>
-        <Link to="/help" onClick={()=>setOpen(false)}>Help & FAQs</Link>
-        <span className="nav-spacer"/>
-        {!signedIn&&<Link className="register-link" to="/register" onClick={()=>setOpen(false)}>Register</Link>}
-        {signedIn
-          ? <Link className="profile-link" to="/profile" onClick={()=>setOpen(false)} aria-label={`Open ${displayName}'s profile`}><span className="profile-avatar">{displayName.charAt(0).toUpperCase()}</span><span>{displayName}</span></Link>
-          : <Link className="signin-link" to="/login" onClick={()=>setOpen(false)}>Sign in</Link>}
+        <div className="nav-main">
+          <Link to="/" onClick={()=>setOpen(false)}>Home</Link>
+          <Link to="/start" onClick={()=>setOpen(false)}>Lodge grievance</Link>
+          <Link to="/track" onClick={()=>setOpen(false)}>Track grievance</Link>
+          <Link to="/how-it-works" onClick={()=>setOpen(false)}>How it works</Link>
+        </div>
+        <div className="nav-account">
+          {!signedIn
+            ? <><Link className="register-link" to="/register" onClick={()=>setOpen(false)}>Register</Link><Link className="signin-link" to="/login" onClick={()=>setOpen(false)}>Sign in</Link></>
+            : <>
+              <Link className="profile-link" to="/profile" onClick={()=>setOpen(false)} aria-label={`Open ${displayName}'s profile`}><span className="profile-avatar">{displayName.charAt(0).toUpperCase()}</span><span>{displayName}</span></Link>
+              <button className="signout-icon" type="button" aria-label="Sign out" title="Sign out" onClick={()=>setConfirmSignOut(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10M14 8l4 4-4 4M9 12h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+            </>}
+        </div>
       </nav>
     </header>
+    {confirmSignOut&&<div className="modal-backdrop" role="presentation"><section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="signout-title"><div className="confirm-icon" aria-hidden="true">↪</div><h2 id="signout-title">Sign out of Sahaay?</h2><p>You'll need to sign in again to view your grievances or submit a new one.</p><div className="confirm-actions"><button className="quiet" onClick={()=>setConfirmSignOut(false)}>Cancel</button><button onClick={signOut}>Sign out</button></div></section></div>}
   </>
 }
 function Disclosure(){return <section className="disclosure"><b>About this service</b><p>Government submissions, identity verification, documents, notifications and integrations use synthetic data in this service. No real government account or production system is connected.</p><Link to={A}>How this could work safely →</Link></section>}
@@ -239,12 +280,16 @@ function Home(){
           <div className="hero-chat-top"><span className="hero-chat-label">Sahaay</span><span className="secure-label">{c?'Signed in · ready to begin':'Sign in required to continue'}</span></div>
           <textarea aria-label="Tell Sahaay what happened" placeholder="Describe your problem…" value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go()}}}/>
           <div className="hero-chat-bottom">
-            <div className="hero-chat-hint"><span>Type naturally · Press Enter to continue</span></div>
+            <div className="hero-chat-hint"><span>Press Enter to continue</span></div>
             <button className="hero-send" onClick={go} disabled={!text.trim()} aria-label="Start guidance"><span aria-hidden="true">↑</span></button>
           </div>
         </div>
         <div className="hero-examples"><span>Try:</span>{examples.map(x=><button key={x} onClick={()=>setText(x)}>{x}</button>)}</div>
         <p className="hero-privacy">Your grievance is private and linked to your signed-in account. Never share Aadhaar, OTPs, passwords or bank details.</p>
+      </section>
+      <section className="how-summary">
+        <div className="section-title"><p className="eyebrow">A simpler journey</p><h2>From your words to a clear next step.</h2></div>
+        <ol>{[['Describe','Tell us what happened in your own words.'],['Understand','Sahaay identifies the likely grievance path.'],['Prepare','See what information you need before submission.'],['Submit','Review your details before registering the grievance.'],['Track','Follow every stage and know when you need to act.']].map(([t,d],i)=><li key={t}><span>{i+1}</span><b>{t}</b><p>{d}</p></li>)}</ol>
       </section>
       <section className="quick-services">
         <div className="section-title"><p className="eyebrow">Your options</p><h2>What would you like to do?</h2></div>
@@ -253,10 +298,6 @@ function Home(){
           <Link to="/track"><span className="card-number">02</span><h3>Track my grievances</h3><p>See every case linked to your account and what happens next.</p><b>View my grievances →</b></Link>
           <Link to="/how-it-works"><span className="card-number">03</span><h3>Understand the process</h3><p>See how a grievance moves from submission to resolution or appeal.</p><b>View the process →</b></Link>
         </div>
-      </section>
-      <section className="how-summary">
-        <div className="section-title"><p className="eyebrow">A simpler journey</p><h2>From your words to a clear next step.</h2></div>
-        <ol>{[['Describe','Tell us what happened in your own words.'],['Understand','Sahaay identifies the likely grievance path.'],['Prepare','See what information you need before submission.'],['Submit','Review your details before registering the grievance.'],['Track','Follow every stage and know when you need to act.']].map(([t,d],i)=><li key={t}><span>{i+1}</span><b>{t}</b><p>{d}</p></li>)}</ol>
       </section>
       <section className="difference">
         <div><p className="eyebrow">Designed around the citizen</p><h2>You shouldn't have to understand the bureaucracy to navigate it.</h2></div>
@@ -277,11 +318,12 @@ function Register(){const {login}=useCitizen();const nav=useNavigate();const [fo
 function Profile(){
   const {c,login}=useCitizen();
   const [saved,setSaved]=useState(false);
-  const [form,setForm]=useState({name:'',email:'',phone:''});
+  const [confirmSignOut,setConfirmSignOut]=useState(false);
+  const [form,setForm]=useState({name:'',email:'',phone:'',address:''});
   useEffect(()=>{
     if(c){
       const stored=JSON.parse(localStorage.getItem(`sahaay-profile-${c.id}`)||'null');
-      setForm({name:stored?.name||c.name,email:stored?.email||c.email,phone:stored?.phone||c.phone});
+      setForm({name:stored?.name||c.name,email:stored?.email||c.email,phone:stored?.phone||c.phone,address:stored?.address||c.address||''});
     }
   },[c?.id]);
   if(!c)return <Navigate to="/login" replace/>;
@@ -297,17 +339,17 @@ function Profile(){
   return <><Header citizen={form.name}/><main id="main-content" className="profile-page">
     <div className="profile-page-head"><div><p className="eyebrow">Your account</p><h1>Personal details</h1><p>Keep your contact details up to date for your grievance journey.</p></div><Link className="button quiet" to="/track">My grievances →</Link></div>
     <section className="profile-card">
-      <div className="profile-card-intro"><span className="profile-avatar profile-avatar-xl">{form.name.trim().charAt(0).toUpperCase()}</span><div><h2>{form.name || 'Your details'}</h2><p>{form.email}</p></div></div>
+      <div className="profile-card-intro"><span className="profile-avatar profile-avatar-xl">{form.name.trim().charAt(0).toUpperCase()}</span><div><h2>{form.name || 'Your details'}</h2><p>{form.email}</p></div><button className="profile-signout" type="button" onClick={()=>setConfirmSignOut(true)} aria-label="Sign out">Sign out</button></div>
       <form onSubmit={save} className="profile-form">
-        <div className="form-grid"><label>Full name<input value={form.name} onChange={e=>update('name',e.target.value)} required/></label><label>Email address<input type="email" value={form.email} onChange={e=>update('email',e.target.value)} required/></label><label>Mobile number<input value={form.phone} onChange={e=>update('phone',e.target.value)} inputMode="tel" required/></label></div>
+        <div className="form-grid"><label>Full name<input value={form.name} onChange={e=>update('name',e.target.value)} required/></label><label>Email address<input type="email" value={form.email} onChange={e=>update('email',e.target.value)} required/></label><label>Mobile number<input value={form.phone} onChange={e=>update('phone',e.target.value)} inputMode="tel" required/></label><label className="full-field">Address<input value={form.address} onChange={e=>update('address',e.target.value)} required/></label></div>
         <div className="profile-actions"><span className="fine">Your account uses synthetic information in this service.</span><button type="submit">Save changes →</button></div>
         {saved&&<p className="success" role="status">Your details have been updated.</p>}
       </form>
     </section>
-    <section className="profile-security"><div><p className="eyebrow">Account security</p><h2>Keep your account private</h2><p>Only a signed-in citizen can view their grievance history or continue to a grievance submission.</p></div><button className="quiet" type="button" onClick={()=>{localStorage.removeItem('sahaay-citizen');window.location.href='/login'}}>Sign out</button></section>
-  </main></>;
-}
-function Dashboard(){const {c,logout}=useCitizen(); if(!c)return <Navigate to="/login" replace/>; const gs=getGrievances().filter(g=>g.citizenId===c.id); return <><Header citizen={c.name}/><main id="main-content" className="dash"><div className="title-row"><div><p className="eyebrow">Your citizen space</p><h1>{c.greeting}, {c.name.split(' ')[0]}</h1><p>Here’s what needs your attention.</p></div><button className="quiet" onClick={logout}>Sign out</button></div>{gs.length?<><section className="active"><div><p className="eyebrow">Active grievance</p><h2>{gs[0].title}</h2><p>{gs[0].id} · <b className={'status '+gs[0].status}>{label(gs[0].status)}</b></p></div><Link className="button" to={'/track/'+gs[0].id}>View progress →</Link></section>{gs[0].status==='action_required'&&<section className="attention"><b>Action needed</b><p>Provide additional information so the department can continue.</p><Link to={'/track/'+gs[0].id}>Provide information →</Link></section>}</>:<section className="empty"><h2>No active grievances</h2><p>Start by describing the problem in everyday language.</p><Link className="button" to="/start">Describe a problem →</Link></section>}<Link className="new-link" to="/start">Need help with a new problem? →</Link></main></>}
+    
+  {confirmSignOut&&<div className="modal-backdrop" role="presentation"><section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="profile-signout-title"><div className="confirm-icon" aria-hidden="true">↪</div><h2 id="profile-signout-title">Sign out of Sahaay?</h2><p>You’ll need to sign in again to view your grievances or submit a new one.</p><div className="confirm-actions"><button className="quiet" onClick={()=>setConfirmSignOut(false)}>Cancel</button><button onClick={()=>{localStorage.removeItem('sahaay-citizen');window.location.href='/'}}>Sign out</button></div></section></div>}
+  </main></>;}
+function Dashboard(){const {c,logout}=useCitizen(); if(!c)return <Navigate to="/login" replace/>; const gs=getGrievances().filter(g=>g.citizenId===c.id); return <><Header citizen={c.name}/><main id="main-content" className="dash"><div className="title-row"><div><p className="eyebrow">Your citizen space</p><h1>{c.greeting}, {c.name.split(' ')[0]}</h1><p>Here’s what needs your attention.</p></div></div>{gs.length?<><section className="active"><div><p className="eyebrow">Active grievance</p><h2>{gs[0].title}</h2><p>{gs[0].id} · <b className={'status '+gs[0].status}>{label(gs[0].status)}</b></p></div><Link className="button" to={'/track/'+gs[0].id}>View progress →</Link></section>{gs[0].status==='action_required'&&<section className="attention"><b>Action needed</b><p>Provide additional information so the department can continue.</p><Link to={'/track/'+gs[0].id}>Provide information →</Link></section>}</>:<section className="empty"><h2>No active grievances</h2><p>Start by describing the problem in everyday language.</p><Link className="button" to="/start">Describe a problem →</Link></section>}<Link className="new-link" to="/start">Need help with a new problem? →</Link></main></>}
 function infer(t:string){const x=t.toLowerCase();if(/rti|right to information/.test(x))return 'rti';if(/emergency|police|ambulance/.test(x))return 'emergency';if(/pension/.test(x))return 'pension';if(/closed|still not solved|unresolved/.test(x))return 'existing';if(/pending|application/.test(x))return 'service';return 'unknown'}
 const qs:{[key:string]:{q:string, why:string, options:string[]}[]}={pension:[{q:'Is this a pension payment that was expected but did not arrive?',why:'This identifies the right grievance path.',options:['Yes, a payment did not arrive','No, it is about starting my pension','The amount seems incorrect']},{q:'When was the payment expected?',why:'This helps explain the delay clearly.',options:['This month','Last month','More than one month ago']},{q:'Is this the first missed payment?',why:'This helps the department understand the pattern.',options:['Yes, the first time','No, it has happened before']},{q:'Do you know the pension scheme or department?',why:'This can improve the suggested route.',options:['Yes, I know it','No, I am not sure']}],service:[{q:'What is delayed?',why:'This helps identify the service.',options:['An application decision','A certificate or document','A service request']},{q:'How long has it been pending?',why:'This shows the expected wait has passed.',options:['A few weeks','About two months','Longer than two months']}],existing:[{q:'What happened to your previous grievance?',why:'This helps find the right next step.',options:['It was closed but unresolved','The response did not address my issue','I received incorrect information']}],unknown:[{q:'Which best describes the problem?',why:'This helps us suggest a suitable path.',options:['A payment or pension issue','A delayed government service','An existing complaint is unresolved','Something else']} ]}
 function Journey(){const nav=useNavigate();const {c}=useCitizen();const [desc,setDesc]=useState(()=>sessionStorage.getItem('sahaay-description')||'');const [intent,setIntent]=useState(()=>infer(desc));const [step,setStep]=useState(0);const [answers,setAnswers]=useState<string[]>([]);const [open,setOpen]=useState(true);const [mobile,setMobile]=useState(false);const current=qs[intent]||qs.unknown; const guard=intent==='rti'||intent==='emergency';const choose=(a:string)=>{setAnswers([...answers,a]); if(step+1<current.length)setStep(step+1);else setStep(current.length)}; const ready=step>=current.length; const begin=()=>{setIntent(infer(desc));setStep(0);setAnswers([])};
@@ -454,6 +496,6 @@ function Tracker(){const {id=''}=useParams();const {c}=useCitizen();const [g,set
   {g.status==='appeal_submitted'&&<section className="action-box appeal-success"><p className="eyebrow">Appeal submitted</p><h2>Your appeal is now in the review queue.</h2><p><b>Appeal ID:</b> {g.appealId}</p><p>The appeal has been sent to <b>{authority.escalationName}</b>, {authority.escalationRole}. You do not need to do anything right now.</p><div className="action-actions"><Link className="button" to="/track">View my grievances →</Link><Link className="button quiet" to="/dashboard">Back to my account</Link></div></section>}
   </main></>}
 function About(){return <><Header/><main id="main-content" className="about"><p className="eyebrow">About this service</p><h1>A citizen-friendly interpretation layer for grievance systems.</h1><p className="lead">Sahaay is a citizen-guidance experience inspired by CPGRAMS. It is designed to make the grievance journey easier to understand—not to replace the government system behind it.</p><section><h2>Honest by design</h2><p>Government submissions, identity checks, routing, documents and notifications use synthetic data here. No real government account or production system is connected.</p></section><section><h2>How it could safely scale</h2><div className="architecture"><b>Citizen experience</b><span>↓</span><b>AI interpretation</b><span>↓</span><b>Deterministic policy & routing</b><span>↓</span><b>Secure government systems</b><span>↓</span><b>Audit & security</b></div><p><b>AI proposes. Rules validate. Government systems execute.</b> A future language model may translate everyday wording into a structured proposal, but it must never make independent eligibility or irreversible government decisions.</p></section></main></>}
-function HowItWorks(){return <><Header/><main id="main-content" className="content-page"><div className="breadcrumb">Home <span>/</span> How Sahaay works</div><p className="eyebrow">How it works</p><h1>One clear path from problem to progress.</h1><p className="lead">Sahaay helps citizens understand a grievance journey in plain language. It does not replace government systems or make government decisions.</p><div className="process-list">{[['1','Describe your issue','Use everyday language. We only ask non-sensitive questions that help identify a suitable grievance path.'],['2','Review the suggested path','Sahaay explains the likely category, the information to prepare and what happens next.'],['3','Submit securely','In a production service, you would review details before a secure government submission. This this service records the step with synthetic data.'],['4','Stay informed','Track each stage, see who is reviewing the case, and know whether any action is needed.'],['5','Give feedback or appeal','Tell us if the response solved the problem. If eligible, request a review of an unsatisfactory resolution.']].map(x=><section key={x[0]}><span>{x[0]}</span><div><h2>{x[1]}</h2><p>{x[2]}</p></div></section>)}</div></main><Footer/></>}
+function HowItWorks(){return <><Header/><main id="main-content" className="content-page"><div className="breadcrumb">Home <span>/</span> How Sahaay works</div><p className="eyebrow">How it works</p><h1>One clear path from problem to progress</h1><p className="lead">Sahaay turns an unfamiliar government process into a sequence of clear decisions — what happened, where it belongs, what happens next, and what you can do if it stalls.</p><div className="how-highlights"><div><b>Start with your problem</b><span>No department knowledge required</span></div><div><b>Know where it goes</b><span>Service, jurisdiction and authority</span></div><div><b>Know what happens next</b><span>Updates, escalation and appeal</span></div></div><div className="process-list">{[['1','Describe your issue','Use everyday language. We only ask non-sensitive questions that help identify a suitable grievance path.'],['2','Review the suggested path','Sahaay explains the likely category, the information to prepare and what happens next.'],['3','Submit securely','In a production service, you would review details before a secure government submission. This service records the step with synthetic data.'],['4','Stay informed','Track each stage, see who is reviewing the case, and know whether any action is needed.'],['5','Give feedback or appeal','Tell us if the response solved the problem. If eligible, request a review of an unsatisfactory resolution.']].map(x=><section key={x[0]}><span>{x[0]}</span><div><h2>{x[1]}</h2><p>{x[2]}</p></div></section>)}</div></main><Footer/></>}
 function Help(){return <><Header/><main id="main-content" className="content-page"><div className="breadcrumb">Home <span>/</span> Help & FAQs</div><p className="eyebrow">Help centre</p><h1>Help with your grievance journey</h1><p className="lead">Plain-language answers about submitting, tracking and responding to a grievance.</p><div className="help-grid"><section><h2>Common questions</h2>{['What is a grievance?','What does “responsible grievance officer” mean?','What is a clarification?','What is a reminder?','What is an appeal?'].map((x,i)=><details key={x}><summary>{x}<span>+</span></summary><p>{['A complaint about a problem with a public service.','The officer designated to handle grievances for the relevant organisation.','Additional information requested by the department.','A request for an update when your grievance has been pending longer than expected.','A request to review a resolution you are not satisfied with.'][i]}</p></details>)}</section><aside className="support-panel"><h2>Ready to begin?</h2><p>Describe the problem in your own words. You do not need to know where it should be routed.</p><Link className="button" to="/start">Lodge a grievance →</Link><hr/><p className="fine">Never share Aadhaar, OTPs, passwords or bank details in guidance.</p></aside></div></main><Footer/></>}
 function App(){return <Routes><Route path="/" element={<Home/>}/><Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/><Route path="/dashboard" element={<Dashboard/>}/><Route path="/profile" element={<Profile/>}/><Route path="/start" element={<ConversationJourney/>}/><Route path="/submit" element={<Submit/>}/><Route path="/submitted/:id" element={<Submitted/>}/><Route path="/track" element={<Track/>}/><Route path="/track/:id" element={<Tracker/>}/><Route path="/about" element={<About/>}/><Route path="/how-it-works" element={<HowItWorks/>}/><Route path="/help" element={<Help/>}/><Route path="*" element={<Navigate to="/"/>}/></Routes>};createRoot(document.getElementById('root')!).render(<BrowserRouter><App/></BrowserRouter>)

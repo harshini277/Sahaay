@@ -633,7 +633,7 @@ a{color:var(--maroon)}
 }
 .portal-header nav a:hover::after{right:0}
 .portal-header .signin-link{background:var(--maroon);border-color:var(--maroon);border-radius:9px}
-.portal-header .signin-link:hover{background:#ead7dc;border-color:#c9aeb6;color:#5f2433}
+.portal-header .signin-link:hover{background:var(--maroon-dark);border-color:var(--maroon-dark)}
 
 button,.button{
   background:var(--maroon);
@@ -641,7 +641,7 @@ button,.button{
   border-radius:9px;
   box-shadow:0 3px 10px rgba(143,23,56,.10);
 }
-button:hover,.button:hover{background:#ead7dc;border-color:#c9aeb6;color:#5f2433}
+button:hover,.button:hover{background:var(--maroon-dark);border-color:var(--maroon-dark)}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{
   outline:3px solid rgba(200,138,61,.55);
   outline-offset:3px;
@@ -769,7 +769,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--maroon);box-shadow:0 
 .process-list section>span{background:var(--maroon);border-radius:9px}
 
 /* Small decorative motion that respects reduced-motion preferences. */
-.service-cards a,.guidance-panel,.how-highlights>div{animation:soft-rise .55s ease both}
+.service-cards a,.guidance-panel,.how-highlights>div,.process-list section{animation:soft-rise .55s ease both}
 .service-cards a:nth-child(2),.how-highlights>div:nth-child(2){animation-delay:.06s}
 .service-cards a:nth-child(3),.how-highlights>div:nth-child(3){animation-delay:.12s}
 @keyframes soft-rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
@@ -1078,7 +1078,7 @@ body,p,button,input,textarea,select{font-family:var(--body-font)}
 .hero-chat-top,.hero-chat-bottom,.hero-chat textarea{position:relative;z-index:1}
 .hero-chat-label{color:var(--maroon)}
 .hero-send,.send-button{background:linear-gradient(135deg,var(--maroon-2),var(--maroon))!important;border-color:var(--maroon)!important;box-shadow:0 7px 18px rgba(120,0,25,.22)}
-.hero-send:hover,.send-button:hover{background:#ead7dc!important;border-color:#c9aeb6!important;color:#5f2433!important}
+.hero-send:hover,.send-button:hover{background:linear-gradient(135deg,#ad1d3b,#680016)!important}
 .hero-examples button{border-color:#d6c4a8;background:#fffaf2;color:var(--maroon);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
 .hero-examples button:hover{background:#fff3df;border-color:#cda76e;transform:translateY(-2px);box-shadow:0 6px 16px rgba(120,0,25,.08)}
 
@@ -1130,8 +1130,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)}
 .authority-card{border-radius:13px;border-top-color:var(--maroon);box-shadow:var(--shadow)}
 .escalation-note{background:#fff8ed;border-left-color:var(--saffron);border-radius:7px}
 .process-list section{box-shadow:0 8px 25px rgba(16,47,76,.055);transition:transform .18s ease,box-shadow .18s ease}
-.process-list section:hover{box-shadow:0 12px 30px rgba(16,47,76,.09)}
-
+.process-list section:hover{transform:translateX(3px);box-shadow:0 12px 30px rgba(16,47,76,.09)}
+.process-list section>span{background:var(--maroon);border-radius:9px}
 
 /* Footer */
 footer{background:linear-gradient(135deg,var(--navy-2),var(--maroon));position:relative;overflow:hidden}
@@ -1147,38 +1147,9 @@ footer::before{content:"";position:absolute;width:360px;height:360px;right:-150p
 @media(max-width:900px){.conversation-shell{grid-template-columns:27% minmax(0,73%)}}
 @media(max-width:720px){.conversation-shell{display:block}}
 
+/* File 2 warmer beige border treatment */
+input,textarea,select{border-color:#cdbfb4}
+.quiet{border-color:#cdbfb4}
+.chat-options button{border-color:#d0c1b6}
+.composer{border-color:#d5c7bc}
 
-
-
-
-/* Timeline/process markers: keep bullets visually fixed. */
-.timeline .dot,
-.process-list section > span {
-  transform: none !important;
-  animation: none !important;
-  transition: none !important;
-}
-
-/* View-progress timeline: no hover motion or colour shift on timeline rows. */
-.tracker .timeline .event,
-.tracker .timeline .event button,
-.tracker .timeline .event .dot,
-.tracker .timeline .event-detail{
-  animation:none !important;
-  transition:none !important;
-  transform:none !important;
-}
-.tracker .timeline .event button:hover,
-.tracker .timeline .event button:focus,
-.tracker .timeline .event button:active{
-  background:transparent !important;
-  color:var(--ink) !important;
-  border-color:transparent !important;
-  box-shadow:none !important;
-  transform:none !important;
-}
-.tracker .timeline .event button:hover h2,
-.tracker .timeline .event button:hover p,
-.tracker .timeline .event button:hover > span:last-child{
-  color:inherit !important;
-}

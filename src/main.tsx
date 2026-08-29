@@ -209,7 +209,7 @@ function Header({citizen}:{citizen?:string}){
     <header className="portal-header">
       <Link className="service-lockup" to="/" aria-label="Sahaay home">
         <span className="sahaay-mark" aria-hidden="true"><img src="/sahaay-logo.png" alt="" /></span>
-        <span><b>Sahaay</b><small>Know what to do next.</small></span>
+        <span><b>Sahaay</b><small>A simpler grievance journey.</small></span>
       </Link>
       <button className="menu-button" aria-expanded={open} aria-controls="portal-nav" onClick={()=>setOpen(!open)}><span className="menu-icon" aria-hidden="true">☰</span> Menu</button>
       <nav id="portal-nav" className={open?'open':''}>
@@ -233,7 +233,7 @@ function Header({citizen}:{citizen?:string}){
   </>
 }
 function Disclosure(){return <section className="disclosure"><b>About this service</b><p>Government submissions, identity verification, documents, notifications and integrations use synthetic data in this service. No real government account or production system is connected.</p><Link to={A}>How this could work safely →</Link></section>}
-function Footer(){return <footer><div className="footer-grid"><div><div className="footer-brand">Sahaay <small>Citizen assistance</small></div><p>Clearer guidance for public grievances, inspired by CPGRAMS.</p></div><div><b>Sahaay</b><Link to={A}>About this service</Link><Link to="/how-it-works">How it works</Link><Link to={A}>Privacy</Link></div><div><b>Grievance services</b><Link to="/start">Lodge grievance</Link><Link to="/track">Track grievance</Link><Link to="/help">Appeal</Link></div><div><b>Help</b><Link to="/help">FAQs</Link><Link to="/help">Contact & support</Link></div></div><div className="footer-note">Government submissions, identity verification, documents and integrations are simulated with synthetic data. No connection to CPGRAMS production systems is made.</div></footer>}
+function Footer(){return <footer><div className="footer-grid"><div><div className="footer-brand">Sahaay <small>Citizen assistance</small></div><p>Clearer guidance for public grievances, inspired by CPGRAMS.</p></div><div><b>Sahaay</b><Link to={A}>About this service</Link><Link to="/how-it-works">How it works</Link></div><div><b>Grievance services</b><Link to="/start">Lodge grievance</Link><Link to="/track">Track grievance</Link></div><div><b>Help</b><Link to="/help">FAQs</Link><span>Contact us at support@sahaay.com</span></div></div><div className="footer-note">Government submissions, identity verification, documents and integrations are simulated with synthetic data. No connection to CPGRAMS production systems is made.</div></footer>}
 function Home(){
   const [text,setText]=useState('');
   const [signIn,setSignIn]=useState(false);
@@ -252,7 +252,7 @@ function Home(){
         <p className="eyebrow">Citizen grievance guidance</p>
         <h1>What went wrong?</h1>
         <p className="home-hero-lead">Tell Sahaay what happened in your own words. We'll help you find the right grievance path.</p>
-        <div className="hero-chat">
+        <div className="hero-chat home-composer-final-compact">
           <div className="hero-chat-top"><span className="hero-chat-label">Sahaay</span><span className="secure-label">{c?'Signed in · ready to begin':'Sign in required to continue'}</span></div>
           <textarea aria-label="Tell Sahaay what happened" placeholder="Describe your problem…" value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go()}}}/>
           <div className="hero-chat-bottom">
@@ -403,7 +403,7 @@ function Submit(){
           <label>Email address<input type="email" value={form.email} onChange={e=>update('email',e.target.value)} required/></label>
           <label>State<input value={form.state} onChange={e=>update('state',e.target.value)} required/></label>
           <label>District / city<input value={form.district} onChange={e=>update('district',e.target.value)} required/></label>
-          <label>State<input value={form.state} onChange={e=>update('state',e.target.value)} required/></label><label>District / city<input value={form.district} onChange={e=>update('district',e.target.value)} required/></label><label className="full-field">Address<input value={form.address} onChange={e=>update('address',e.target.value)} required/></label>
+          <label className="full-field">Address<input value={form.address} onChange={e=>update('address',e.target.value)} required/></label>
         </div>
       </div>
 
@@ -474,3 +474,6 @@ function About(){return <><Header/><main id="main-content" className="about"><p 
 function HowItWorks(){return <><Header/><main id="main-content" className="content-page"><div className="breadcrumb">Home <span>/</span> How Sahaay works</div><p className="eyebrow">How it works</p><h1>One clear path from problem to progress</h1><p className="lead">Sahaay turns an unfamiliar government process into a sequence of clear decisions — what happened, where it belongs, what happens next, and what you can do if it stalls.</p><div className="how-highlights"><div><b>Start with your problem</b><span>No department knowledge required</span></div><div><b>Know where it goes</b><span>Service, jurisdiction and authority</span></div><div><b>Know what happens next</b><span>Updates, escalation and appeal</span></div></div><div className="process-list">{[['1','Describe your issue','Use everyday language. We only ask non-sensitive questions that help identify a suitable grievance path.'],['2','Review the suggested path','Sahaay explains the likely category, the information to prepare and what happens next.'],['3','Submit securely','In a production service, you would review details before a secure government submission. This service records the step with synthetic data.'],['4','Stay informed','Track each stage, see who is reviewing the case, and know whether any action is needed.'],['5','Give feedback or appeal','Tell us if the response solved the problem. If eligible, request a review of an unsatisfactory resolution.']].map(x=><section key={x[0]}><span>{x[0]}</span><div><h2>{x[1]}</h2><p>{x[2]}</p></div></section>)}</div></main><Footer/></>}
 function Help(){return <><Header/><main id="main-content" className="content-page"><div className="breadcrumb">Home <span>/</span> Help & FAQs</div><p className="eyebrow">Help centre</p><h1>Help with your grievance journey</h1><p className="lead">Plain-language answers about submitting, tracking and responding to a grievance.</p><div className="help-grid"><section><h2>Common questions</h2>{['What is a grievance?','What does “responsible grievance officer” mean?','What is a clarification?','What is a reminder?','What is an appeal?'].map((x,i)=><details key={x}><summary>{x}<span>+</span></summary><p>{['A complaint about a problem with a public service.','The officer designated to handle grievances for the relevant organisation.','Additional information requested by the department.','A request for an update when your grievance has been pending longer than expected.','A request to review a resolution you are not satisfied with.'][i]}</p></details>)}</section><aside className="support-panel"><h2>Ready to begin?</h2><p>Describe the problem in your own words. You do not need to know where it should be routed.</p><Link className="button" to="/start">Lodge a grievance →</Link><hr/><p className="fine">Never share Aadhaar, OTPs, passwords or bank details in guidance.</p></aside></div></main><Footer/></>}
 function App(){return <Routes><Route path="/" element={<Home/>}/><Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/><Route path="/dashboard" element={<Dashboard/>}/><Route path="/profile" element={<Profile/>}/><Route path="/start" element={<ConversationJourney/>}/><Route path="/submit" element={<Submit/>}/><Route path="/submitted/:id" element={<Submitted/>}/><Route path="/track" element={<Track/>}/><Route path="/track/:id" element={<Tracker/>}/><Route path="/about" element={<About/>}/><Route path="/how-it-works" element={<HowItWorks/>}/><Route path="/help" element={<Help/>}/><Route path="*" element={<Navigate to="/"/>}/></Routes>};createRoot(document.getElementById('root')!).render(<BrowserRouter><App/></BrowserRouter>)
+
+
+

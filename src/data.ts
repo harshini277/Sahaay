@@ -1,10 +1,10 @@
 import type { Citizen, Grievance } from './types'
 
 export const citizens: Citizen[] = [
- {id:'demo',name:'Demo User',email:'demo_user@gmail.com',phone:'+91 90000 00000',address:'12 Example Road, Bengaluru, Karnataka',greeting:'Good morning'},
- {id:'anita',name:'Anita Sharma',email:'anita.demo@example.com',phone:'+91 90000 12345',address:'24 Lake View Road, Chennai, Tamil Nadu',greeting:'Good morning'},
- {id:'ravi',name:'Ravi Kumar',email:'ravi.demo@example.com',phone:'+91 90000 56789',address:'8 Station Road, Pune, Maharashtra',greeting:'Hello'},
- {id:'meena',name:'Meena Iyer',email:'meena.demo@example.com',phone:'+91 90000 98765',address:'16 Temple Street, Kochi, Kerala',greeting:'Hello'}
+ {id:'demo',name:'Demo User',email:'demo_user@gmail.com',phone:'+91 90000 00000',state:'Karnataka',district:'Bengaluru',address:'12 Star Road, Bengaluru, Karnataka',greeting:'Good morning'},
+ {id:'anita',name:'Anita Sharma',email:'anita.demo@example.com',phone:'+91 90000 12345',state:'Tamil Nadu',district:'Chennai',address:'24 Lake View Road, Chennai, Tamil Nadu',greeting:'Good morning'},
+ {id:'ravi',name:'Ravi Kumar',email:'ravi.demo@example.com',phone:'+91 90000 56789',state:'Maharashtra',district:'Pune',address:'8 Station Road, Pune, Maharashtra',greeting:'Hello'},
+ {id:'meena',name:'Meena Iyer',email:'meena.demo@example.com',phone:'+91 90000 98765',state:'Kerala',district:'Kochi',address:'16 Temple Street, Kochi, Kerala',greeting:'Hello'}
 ]
 
 const fmt=(date:Date)=>new Intl.DateTimeFormat('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}).format(date).replace(',', ' ·')

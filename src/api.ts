@@ -15,7 +15,7 @@ export const api = {
     reply: async (c:Conversation,text:string) => later(reply(c,text)),
   },
   auth: {
-    register:(input:{name:string;email:string;phone:string}) => { const id=`citizen-${Date.now()}`; const citizen:Citizen={id,name:input.name,email:input.email,phone:input.phone,address:'',greeting:'Welcome'}; citizens.push(citizen); return later(citizen) },
+    register:(input:{name:string;email:string;phone:string}) => { const id=`citizen-${Date.now()}`; const citizen:Citizen={id,name:input.name,email:input.email,phone:input.phone,state:'',district:'',address:'',greeting:'Welcome'}; citizens.push(citizen); return later(citizen) },
     login:(email:string,password:string) => later((email==='demo_user@gmail.com' && password==='demo166') ? citizens.find(c=>c.id==='demo') : (password==='Citizen2026!' ? citizens.find(c=>c.email===email) : undefined)),
   },
   grievances: {

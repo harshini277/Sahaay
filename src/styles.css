@@ -519,3 +519,30 @@ html,body,#root{font-family:var(--body-font)}
 .hero-send{width:38px;height:38px;min-height:38px;border-radius:50%;padding:0}
 .hero-examples{margin-top:11px}
 @media(max-width:620px){.hero-chat textarea{height:52px;min-height:52px}.hero-chat-bottom{min-height:36px}.hero-send{width:36px;height:36px;min-height:36px}}
+.rating-box{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.rating-box h3{margin:0 0 10px;font-size:1.05rem}
+.star-rating{display:flex;gap:4px;margin:4px 0 14px}
+.star-rating button{border:0;background:transparent;color:var(--navy);font-size:2rem;line-height:1;padding:2px 4px;min-height:auto;cursor:pointer}
+.star-rating button:hover{background:transparent;transform:none}
+.star-rating button.selected{color:var(--saffron)}
+.rating-box>button:disabled{opacity:.55;cursor:not-allowed}
+
+
+/* Resolved grievances are retained for reference but visually de-emphasised. */
+.grievance-section{margin-top:28px}
+.grievance-section>.eyebrow{margin-bottom:12px}
+.past-grievances{margin-top:42px}
+.past-card{opacity:.68;border-left-color:var(--muted)}
+.past-card:hover{opacity:.82}
+.past-card h2{font-weight:600}
+.past-card .status{opacity:.85}
+.appeal-contact{margin:18px 0;padding:16px 18px;background:#f8f6f3;border-left:3px solid var(--blue);display:grid;gap:4px}
+.appeal-contact b{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px}
+.appeal-contact strong{font-size:1.05rem}
+.appeal-contact a{width:max-content}
+
+/* Completed grievances: permanently de-emphasised in history. */
+.past-card{opacity:.68;filter:saturate(.72);transition:opacity .2s ease,filter .2s ease}
+.past-card:hover,.past-card:focus-within{opacity:.82;filter:saturate(.88)}
+.past-grievances{margin-top:34px}
+.profile-form .form-grid label.full-field{grid-column:1/-1;max-width:none}

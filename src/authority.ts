@@ -76,9 +76,10 @@ export function authorityFor(state?:string, district?:string, service?:string): 
   const d=(district||'').trim()
   const exact=demoDirectory[`${s}|${d}`]
   const base=exact || stateFallback[s]
-  if(base) return service && /pension|licence|license|certificate|tax|vehicle|registration/i.test(service)
-    ? {...base, department: service}
-    : base
+  if(base) { const withEscalation={...base, escalationPhone:base.escalationPhone || '+91 90000 11888', escalationEmail:base.escalationEmail || 'appellate.authority@demo.sahaay.in'}; return service && /pension|licence|license|certificate|tax|vehicle|registration/i.test(service)
+    ? {...withEscalation, department: service}
+    : withEscalation
+  }
   const safeState = indiaStates.includes(s) ? s : (s || 'India')
   return {
     jurisdiction:d?`${d} district, ${safeState}`:`${safeState} local jurisdiction`,
@@ -92,6 +93,8 @@ export function authorityFor(state?:string, district?:string, service?:string): 
     escalationRole:'District grievance appellate authority',
     escalationName:'Vivek Rao',
     escalationOffice:`Sahaay Demo — ${safeState} District Grievance Office`,
+    escalationPhone:'+91 90000 11888',
+    escalationEmail:'appellate.authority@demo.sahaay.in',
     sourceLabel:'Demo authority directory',
     sourceUrl:'https://pgportal.gov.in/',
     synthetic:true
